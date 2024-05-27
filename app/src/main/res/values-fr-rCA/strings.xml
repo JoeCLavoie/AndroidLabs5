@@ -1,5 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="hello_world">Bonjour le monde</string>
-    <string name="button_text">Je suis un bouton!</string>
+    <string name="app_name">AndroidLabs5</string>
+    <string name="I_love_Android">J\'adore Android</string>
+    <string name="flag">flag.png</string>
+    <string name="press_me_btn">Pousse-moi!</string>
+    <string name="checkbox">Check Ça!</string>
+    <string name="flag_description">Flag of Canada</string>
+    <string name="toast_message">L\'étiquette a été mise à jour.</string>
+    <string name="checkbox_snackbar_message">La case est maintenant %1$s</string>
+    <string name="undo">Annuler</string>
+
 </resources>
