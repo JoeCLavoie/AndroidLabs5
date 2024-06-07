@@ -1,13 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">AndroidLabs5</string>
-    <string name="I_love_Android">J\'adore Android</string>
-    <string name="flag">flag.png</string>
-    <string name="press_me_btn">Pousse-moi!</string>
-    <string name="checkbox">Check Ça!</string>
-    <string name="flag_description">Flag of Canada</string>
-    <string name="toast_message">L\'étiquette a été mise à jour.</string>
-    <string name="checkbox_snackbar_message">La case est maintenant %1$s</string>
-    <string name="undo">Annuler</string>
-
+    <string name="enter_name">Entrer votre nom</string>
+    <string name="next">Suivant</string>
+    <string name="welcome">Bienvenue!</string>
+    <string name="thank_you">MERCI</string>
+    <string name="dont_call_me_that">NE M\'APPELEZ PAS ÇA</string>
+    <string name="welcome_blank">Bienvenue %1$s!</string>
 </resources>

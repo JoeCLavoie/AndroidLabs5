@@ -2,38 +2,23 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical">
+    android:orientation="vertical"
+    android:padding="16dp">
 
-    <!-- Buttons to switch layouts -->
-    <LinearLayout
-        android:layout_width="match_parent"
+    <TextView
+        android:id="@+id/textView"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_horizontal">
+        android:text="@string/enter_name" />
 
-        <Button
-            android:id="@+id/button_linear"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="LinearLayout" />
-
-        <Button
-            android:id="@+id/button_grid"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="GridLayout" />
-
-        <Button
-            android:id="@+id/button_constraint"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="ConstraintLayout" />
-    </LinearLayout>
-
-    <!-- Container to load different layouts -->
-    <FrameLayout
-        android:id="@+id/container"
+    <EditText
+        android:id="@+id/editTextName"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="wrap_content" />
 
+    <Button
+        android:id="@+id/btnNext"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/next" />
 </LinearLayout>
