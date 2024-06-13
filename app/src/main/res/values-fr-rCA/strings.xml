@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">AndroidLabs5</string>
-    <string name="enter_name">Entrer votre nom</string>
-    <string name="next">Suivant</string>
-    <string name="welcome">Bienvenue!</string>
-    <string name="thank_you">MERCI</string>
-    <string name="dont_call_me_that">NE M\'APPELEZ PAS ÇA</string>
-    <string name="welcome_blank">Bienvenue %1$s!</string>
+    <string name="add">Ajouter</string>
+    <string name="type_here">Tapez ici</string>
+    <string name="urgent">Urgent</string>
+    <string name="confirm_delete">Voulez-vous supprimer ceci?</string>
+    <string name="selected_row">La ligne sélectionnée est: </string>
+    <string name="yes">Oui</string>
+    <string name="no">Non</string>
 </resources>
