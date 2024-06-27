@@ -1,110 +1,129 @@
 package com.example.androidlabs5;
 
-import android.content.ContentValues; // New import for ContentValues
-import android.database.Cursor; // New import for Cursor
-import android.database.sqlite.SQLiteDatabase; // New import for SQLiteDatabase
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.os.AsyncTask;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
-import android.widget.AdapterView;
-import android.widget.Button;
-import android.widget.EditText;
-import android.widget.ListView;
-import android.widget.Switch;
-import androidx.appcompat.app.AlertDialog;
+import android.widget.ImageView;
+import android.widget.ProgressBar;
+
 import androidx.appcompat.app.AppCompatActivity;
 
-import java.util.ArrayList;
-import java.util.List;
+import org.json.JSONObject;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 
 public class MainActivity extends AppCompatActivity {
 
-    private List<TodoItem> todoList = new ArrayList<>(); // List to store ToDo items
-    private TodoAdapter adapter; // Adapter to handle ListView
-    private DatabaseHelper dbHelper; // New: Database helper instance
-    private SQLiteDatabase db; // New: SQLite database instance
+    // Tag for logging (had issues with ProgressBar not updating, added for debugging)
+    private static final String TAG = "MainActivity";
+    // UI elements
+    private ImageView imageView;
+    private ProgressBar progressBar;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        ListView listView = findViewById(R.id.todo_list);
-        EditText editText = findViewById(R.id.todo_edit_text);
-        Switch urgentSwitch = findViewById(R.id.urgent_switch);
-        Button addButton = findViewById(R.id.add_button);
+        // Initialize UI elements
+        imageView = findViewById(R.id.imageView);
+        progressBar = findViewById(R.id.progressBar);
 
-        // New: Initialize the database helper and get a writable database
-        dbHelper = new DatabaseHelper(this);
-        db = dbHelper.getWritableDatabase();
-
-        // New: Load existing ToDo items from the database
-        loadTodosFromDatabase();
-
-        // Initialize adapter with context and list of ToDo items
-        adapter = new TodoAdapter(this, todoList);
-        listView.setAdapter(adapter);
-
-        // onClick listener for add button
-        addButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                String todoText = editText.getText().toString(); // Get text from EditText
-                boolean isUrgent = urgentSwitch.isChecked(); // Get urgency status from switch
-                if (!todoText.isEmpty()) { // Text not empty
-                    TodoItem todoItem = new TodoItem(todoText, isUrgent); // Create new ToDo item
-                    addTodoToDatabase(todoItem); // New: Add item to database
-                    todoList.add(todoItem); // Add item to list
-                    adapter.notifyDataSetChanged(); // Notify adapter to refresh ListView
-                    editText.setText(""); // Clear EditText
-                }
-            }
-        });
-
-        // Long click listener for ListView items
-        listView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
-            @Override
-            public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
-                // Show an AlertDialog to confirm deletion
-                new AlertDialog.Builder(MainActivity.this)
-                        .setTitle(getString(R.string.confirm_delete))
-                        .setMessage(getString(R.string.selected_row) + position)
-                        .setPositiveButton(getString(R.string.yes), (dialog, which) -> {
-                            deleteTodoFromDatabase(todoList.get(position)); // New: Delete item from database
-                            todoList.remove(position); // Remove item from list
-                            adapter.notifyDataSetChanged(); // Notify adapter to refresh ListView
-                        })
-                        .setNegativeButton(getString(R.string.no), null)
-                        .show();
-                return true;
-            }
-        });
+        // Start the AsyncTask to load cat images
+        new CatImages().execute();
     }
 
-    // New: Method to load existing ToDo items from the database
-    private void loadTodosFromDatabase() {
-        Cursor cursor = db.query(DatabaseHelper.TABLE_NAME, null, null, null, null, null, null);
-        while (cursor.moveToNext()) {
-            String text = cursor.getString(cursor.getColumnIndex(DatabaseHelper.COLUMN_TEXT));
-            boolean isUrgent = cursor.getInt(cursor.getColumnIndex(DatabaseHelper.COLUMN_URGENT)) == 1;
-            TodoItem todoItem = new TodoItem(text, isUrgent);
-            todoList.add(todoItem);
+    // AsyncTask class to handle downloading and displaying cat images
+    private class CatImages extends AsyncTask<Void, Integer, Bitmap> {
+        private Bitmap catImage; // Bitmap to store the downloaded cat image
+
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+            // Show the ProgressBar before starting the background task
+            runOnUiThread(() -> progressBar.setVisibility(View.VISIBLE));
         }
-        cursor.close();
-    }
 
-    // New: Method to add a new ToDo item to the database
-    private void addTodoToDatabase(TodoItem todoItem) {
-        ContentValues values = new ContentValues();
-        values.put(DatabaseHelper.COLUMN_TEXT, todoItem.getText());
-        values.put(DatabaseHelper.COLUMN_URGENT, todoItem.isUrgent() ? 1 : 0);
-        db.insert(DatabaseHelper.TABLE_NAME, null, values);
-    }
+        @Override
+        protected Bitmap doInBackground(Void... voids) {
+            try {
+                while (true) {
+                    // Fetch JSON response from URL
+                    URL url = new URL("https://cataas.com/cat?json=true");
+                    HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+                    InputStream inputStream = connection.getInputStream();
+                    StringBuilder json = new StringBuilder();
+                    int byteCharacter;
+                    while ((byteCharacter = inputStream.read()) != -1) {
+                        json.append((char) byteCharacter);
+                    }
 
-    // New: Method to delete a ToDo item from the database
-    private void deleteTodoFromDatabase(TodoItem todoItem) {
-        String selection = DatabaseHelper.COLUMN_TEXT + " = ? AND " + DatabaseHelper.COLUMN_URGENT + " = ?";
-        String[] selectionArgs = { todoItem.getText(), todoItem.isUrgent() ? "1" : "0" };
-        db.delete(DatabaseHelper.TABLE_NAME, selection, selectionArgs);
+                    // Parse JSON response to get img ID
+                    JSONObject jsonObject = new JSONObject(json.toString());
+                    String id = jsonObject.getString("_id");
+                    String imageUrl = "https://cataas.com/cat/" + id;
+
+                    // Check if img exists locally
+                    File file = new File(getCacheDir(), id + ".jpg");
+                    if (file.exists()) {
+                        catImage = BitmapFactory.decodeFile(file.getPath());
+                    } else {
+                        // Download the img from URL
+                        URL imageDownloadUrl = new URL(imageUrl);
+                        HttpURLConnection imageConnection = (HttpURLConnection) imageDownloadUrl.openConnection();
+                        InputStream imageInputStream = imageConnection.getInputStream();
+                        catImage = BitmapFactory.decodeStream(imageInputStream);
+
+                        // Save the downloaded img locally
+                        FileOutputStream fileOutputStream = new FileOutputStream(file);
+                        catImage.compress(Bitmap.CompressFormat.JPEG, 100, fileOutputStream);
+                        fileOutputStream.close();
+                    }
+
+                    // Publish progress to trigger UI updates
+                    publishProgress(0);
+                    for (int i = 0; i < 100; i++) {
+                        publishProgress(i);
+                        Thread.sleep(30); // Pause to simulate a countdown
+                    }
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error downloading cat image", e);
+            }
+            return catImage; // Return the last cat image downloaded
+        }
+
+        @Override
+        protected void onProgressUpdate(Integer... values) {
+            // Log progress value for debugging
+            Log.d(TAG, "Progress: " + values[0]);
+            // If progress is at the start, update the ImageView with the new image
+            if (values[0] == 0) {
+                runOnUiThread(() -> {
+                    imageView.setImageBitmap(catImage);
+                });
+            }
+            // Update the ProgressBar with current progress
+            runOnUiThread(() -> progressBar.setProgress(values[0]));
+        }
+
+        @Override
+        protected void onPostExecute(Bitmap bitmap) {
+            // If a bitmap is successfully downloaded, set to ImageView
+            if (bitmap != null) {
+                imageView.setImageBitmap(bitmap);
+            } else {
+                Log.e(TAG, "Failed to download cat image");
+            }
+            // Hide the ProgressBar when task is complete
+            runOnUiThread(() -> progressBar.setVisibility(View.INVISIBLE));
+        }
     }
 }
-
