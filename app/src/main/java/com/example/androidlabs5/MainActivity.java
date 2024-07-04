@@ -1,129 +1,125 @@
 package com.example.androidlabs5;
 
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
+import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
-import android.widget.ImageView;
-import android.widget.ProgressBar;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.ListView;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.InputStream;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
-
-    // Tag for logging (had issues with ProgressBar not updating, added for debugging)
-    private static final String TAG = "MainActivity";
-    // UI elements
-    private ImageView imageView;
-    private ProgressBar progressBar;
+    private ListView listView; // ListView to display character names
+    private List<JSONObject> characterList = new ArrayList<>(); // List to hold character JSON objects
+    private List<String> characterNames = new ArrayList<>(); // List to hold character names
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // Initialize UI elements
-        imageView = findViewById(R.id.imageView);
-        progressBar = findViewById(R.id.progressBar);
+        // Initialize ListView
+        listView = findViewById(R.id.listView);
 
-        // Start the AsyncTask to load cat images
-        new CatImages().execute();
+        // Execute AsyncTask to fetch data from API
+        new FetchDataTask().execute();
+
+        // Set item click listener for ListView
+        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                try {
+                    // Get selected character's JSON object
+                    JSONObject character = characterList.get(position);
+
+                    // Create a bundle to pass character details
+                    Bundle bundle = new Bundle();
+                    bundle.putString("name", character.getString("name"));
+                    bundle.putString("height", character.getString("height"));
+                    bundle.putString("mass", character.getString("mass"));
+
+                    if (findViewById(R.id.frameLayout) == null) { // If frameLayout is not found, we are on a phone
+                        // Start EmptyActivity with character details
+                        Intent intent = new Intent(MainActivity.this, EmptyActivity.class);
+                        intent.putExtras(bundle);
+                        startActivity(intent);
+                    } else { // Otherwise, on a tablet
+                        // Replace the fragment with DetailsFragment
+                        DetailsFragment fragment = new DetailsFragment();
+                        fragment.setArguments(bundle);
+                        getSupportFragmentManager().beginTransaction()
+                                .replace(R.id.frameLayout, fragment)
+                                .commit();
+                    }
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
     }
 
-    // AsyncTask class to handle downloading and displaying cat images
-    private class CatImages extends AsyncTask<Void, Integer, Bitmap> {
-        private Bitmap catImage; // Bitmap to store the downloaded cat image
-
+    // AsyncTask to fetch data from the Star Wars API
+    private class FetchDataTask extends AsyncTask<Void, Void, String> {
         @Override
-        protected void onPreExecute() {
-            super.onPreExecute();
-            // Show the ProgressBar before starting the background task
-            runOnUiThread(() -> progressBar.setVisibility(View.VISIBLE));
-        }
-
-        @Override
-        protected Bitmap doInBackground(Void... voids) {
+        protected String doInBackground(Void... voids) {
             try {
-                while (true) {
-                    // Fetch JSON response from URL
-                    URL url = new URL("https://cataas.com/cat?json=true");
-                    HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-                    InputStream inputStream = connection.getInputStream();
-                    StringBuilder json = new StringBuilder();
-                    int byteCharacter;
-                    while ((byteCharacter = inputStream.read()) != -1) {
-                        json.append((char) byteCharacter);
-                    }
-
-                    // Parse JSON response to get img ID
-                    JSONObject jsonObject = new JSONObject(json.toString());
-                    String id = jsonObject.getString("_id");
-                    String imageUrl = "https://cataas.com/cat/" + id;
-
-                    // Check if img exists locally
-                    File file = new File(getCacheDir(), id + ".jpg");
-                    if (file.exists()) {
-                        catImage = BitmapFactory.decodeFile(file.getPath());
-                    } else {
-                        // Download the img from URL
-                        URL imageDownloadUrl = new URL(imageUrl);
-                        HttpURLConnection imageConnection = (HttpURLConnection) imageDownloadUrl.openConnection();
-                        InputStream imageInputStream = imageConnection.getInputStream();
-                        catImage = BitmapFactory.decodeStream(imageInputStream);
-
-                        // Save the downloaded img locally
-                        FileOutputStream fileOutputStream = new FileOutputStream(file);
-                        catImage.compress(Bitmap.CompressFormat.JPEG, 100, fileOutputStream);
-                        fileOutputStream.close();
-                    }
-
-                    // Publish progress to trigger UI updates
-                    publishProgress(0);
-                    for (int i = 0; i < 100; i++) {
-                        publishProgress(i);
-                        Thread.sleep(30); // Pause to simulate a countdown
-                    }
+                // Connect to API
+                URL url = new URL("https://swapi.dev/api/people/?format=json");
+                HttpURLConnection urlConnection = (HttpURLConnection) url.openConnection();
+                BufferedReader reader = new BufferedReader(new InputStreamReader(urlConnection.getInputStream()));
+                StringBuilder result = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    result.append(line);
                 }
+                return result.toString();
             } catch (Exception e) {
-                Log.e(TAG, "Error downloading cat image", e);
+                Log.e("FetchDataTask", "Error fetching data", e);
+                return null;
             }
-            return catImage; // Return the last cat image downloaded
         }
 
         @Override
-        protected void onProgressUpdate(Integer... values) {
-            // Log progress value for debugging
-            Log.d(TAG, "Progress: " + values[0]);
-            // If progress is at the start, update the ImageView with the new image
-            if (values[0] == 0) {
-                runOnUiThread(() -> {
-                    imageView.setImageBitmap(catImage);
-                });
+        protected void onPostExecute(String result) {
+            if (result == null) {
+                // Handle case where the result is null
+                Toast.makeText(MainActivity.this, "Failed to fetch data from API", Toast.LENGTH_SHORT).show();
+                Log.e("FetchDataTask", "Result is null");
+                return;
             }
-            // Update the ProgressBar with current progress
-            runOnUiThread(() -> progressBar.setProgress(values[0]));
-        }
 
-        @Override
-        protected void onPostExecute(Bitmap bitmap) {
-            // If a bitmap is successfully downloaded, set to ImageView
-            if (bitmap != null) {
-                imageView.setImageBitmap(bitmap);
-            } else {
-                Log.e(TAG, "Failed to download cat image");
+            try {
+                Log.d("FetchDataTask", "API Response: " + result);
+                // Parse the JSON response
+                JSONObject jsonObject = new JSONObject(result);
+                JSONArray characters = jsonObject.getJSONArray("results");
+                for (int i = 0; i < characters.length(); i++) {
+                    JSONObject character = characters.getJSONObject(i);
+                    characterList.add(character);
+                    characterNames.add(character.getString("name"));
+                }
+                // Update ListView with character names
+                ArrayAdapter<String> adapter = new ArrayAdapter<>(MainActivity.this, android.R.layout.simple_list_item_1, characterNames);
+                listView.setAdapter(adapter);
+            } catch (JSONException e) {
+                Log.e("FetchDataTask", "Error parsing JSON data", e);
+                Toast.makeText(MainActivity.this, "Failed to parse JSON data", Toast.LENGTH_SHORT).show();
             }
-            // Hide the ProgressBar when task is complete
-            runOnUiThread(() -> progressBar.setVisibility(View.INVISIBLE));
         }
     }
 }
